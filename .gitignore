@@ -1,0 +1,19 @@
+# 忽略 Python 的虚拟环境（如果你的环境文件夹叫别的名字，记得替换）
+venv/
+env/
+.env
+
+# 忽略 Python 运行时产生的缓存垃圾
+__pycache__/
+*.pyc
+
+# 忽略前端依赖文件夹（如果你写网页的话）
+node_modules/
+
+# 忽略代码编辑器的配置文件夹（比如 VS Code）
+.vscode/
+.idea/
+
+# 忽略 Windows 和 Mac 系统自动产生的隐藏垃圾文件
+Thumbs.db
+.DS_Store
