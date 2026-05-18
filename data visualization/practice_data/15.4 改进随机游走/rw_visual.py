@@ -1,3 +1,4 @@
+# 改进随机游走
 import matplotlib.pyplot as plt
 
 from random_walk import RandomWalk
@@ -5,7 +6,7 @@ from random_walk import RandomWalk
 # 只要程序处于活动状态,就不断地模拟随机游走
 while True:
     # 创建一个 RandomWalk 实例
-    rw = RandomWalk(50_000)
+    rw = RandomWalk(5000)
     rw.fill_walk()
     # 绘制所有的点
     plt.style.use('classic')
@@ -21,6 +22,8 @@ while True:
     # 隐藏坐标轴
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
+
+    plt.savefig('删除负.png', bbox_inches = 'tight')
 
     plt.show()
 
