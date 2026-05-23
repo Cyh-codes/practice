@@ -14,28 +14,28 @@ from pathlib import Path
 
 
 def load_env_file():
-    """Load environment variables from .env file if it exists"""
+    """从项目根目录的 .env 文件加载环境变量"""
     env_file = Path.cwd() / ".env"
     if env_file.exists():
         with open(env_file, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                # Skip empty lines and comments
+                # 跳过空行和注释行
                 if not line or line.startswith("#"):
                     continue
-                # Parse KEY=VALUE
+                # 解析 KEY=VALUE 格式的行
                 if "=" in line:
                     key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip().strip('"').strip("'")
-                    # Only set if not already in environment
+                    # 仅在环境变量不存在时才设置
                     if key not in os.environ:
                         os.environ[key] = value
 
 
 def get_git_diff():
-    """Get staged and unstaged changes"""
-    # Get unstaged changes (new/modified/deleted files)
+    """获取 git 仓库中暂存区和工作区的差异信息"""
+    # 获取未暂存的更改（新文件、修改或删除的文件）
     result = subprocess.run(
         ["git", "diff", "--stat"],
         capture_output=True,
@@ -48,7 +48,7 @@ def get_git_diff():
         print(f"Error getting git diff: {result.stderr}")
         sys.exit(1)
 
-    # Get detailed diff
+    # 获取差异的详细信息（具体代码变更）
     result_detail = subprocess.run(
         ["git", "diff"],
         capture_output=True,
@@ -58,7 +58,7 @@ def get_git_diff():
         cwd=os.getcwd()
     )
 
-    # Also check for untracked files
+    # 同时检查未跟踪（新）的文件
     result_untracked = subprocess.run(
         ["git", "ls-files", "--others", "--exclude-standard"],
         capture_output=True,
@@ -68,6 +68,7 @@ def get_git_diff():
         cwd=os.getcwd()
     )
 
+    # 处理未跟踪文件列表
     untracked = result_untracked.stdout.strip()
     if untracked:
         untracked_files = untracked.split("\n")
@@ -83,7 +84,8 @@ def get_git_diff():
 
 
 def generate_commit_message(diff_stat, diff_detail, untracked_files):
-    """Generate commit message using mimo API"""
+    """使用 MIMO API 根据差异信息生成 Git 提交消息"""
+    # 从环境变量获取 API 配置
     api_key = os.environ.get("MIMO_API_KEY")
     if not api_key:
         print("Error: MIMO_API_KEY environment variable not set")
@@ -93,14 +95,14 @@ def generate_commit_message(diff_stat, diff_detail, untracked_files):
     base_url = os.environ.get("MIMO_BASE_URL", "https://token-plan-sgp.xiaomimimo.com/v1")
     model = os.environ.get("MIMO_MODEL", "mimo-v2.5")
 
-    # Build prompt
+    # 构建发送给 AI 的提示词
     prompt_parts = ["Generate a concise git commit message for the following changes:\n"]
 
     if diff_stat:
         prompt_parts.append(f"Changed files:\n{diff_stat}\n")
 
     if diff_detail:
-        # Truncate if too long
+        # 如果差异详情过长，则进行截断，以符合 token 限制
         if len(diff_detail) > 4000:
             diff_detail = diff_detail[:4000] + "\n... (truncated)"
         prompt_parts.append(f"Diff details:\n{diff_detail}\n")
@@ -108,6 +110,7 @@ def generate_commit_message(diff_stat, diff_detail, untracked_files):
     if untracked_files:
         prompt_parts.append(f"New files: {', '.join(untracked_files)}\n")
 
+    # 添加提交消息的格式和规则要求
     prompt_parts.append("""
 Output a JSON object with a single key "message" containing the commit message.
 
@@ -120,6 +123,7 @@ Rules:
     prompt = "\n".join(prompt_parts)
 
     try:
+        # 设置 API 请求头和请求体
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
@@ -131,8 +135,9 @@ Rules:
             ],
             "temperature": 0.3,
             "max_tokens": 300,
-            "response_format": {"type": "json_object"}
+            "response_format": {"type": "json_object"} # 要求返回 JSON 格式
         }
+        # 发送 POST 请求调用 AI API
         response = requests.post(
             f"{base_url}/chat/completions",
             headers=headers,
@@ -141,6 +146,7 @@ Rules:
         )
         response.raise_for_status()
         result = response.json()
+        # 从 API 返回的 JSON 中提取生成的提交消息
         content = result["choices"][0]["message"]["content"]
         return json.loads(content)["message"]
     except Exception as e:
@@ -149,12 +155,12 @@ Rules:
 
 
 def git_add_commit_push(message, dry_run=False, no_push=False):
-    """Execute git add, commit, and push"""
-    # Stage all changes
+    """执行 git add, commit 和 push 操作"""
+    # 将所有更改添加到暂存区
     if not dry_run:
         subprocess.run(["git", "add", "."], cwd=os.getcwd())
 
-    # Commit
+    # 执行提交
     if not dry_run:
         result = subprocess.run(
             ["git", "commit", "-m", message],
@@ -169,9 +175,9 @@ def git_add_commit_push(message, dry_run=False, no_push=False):
             sys.exit(1)
         print(f"Committed: {message}")
 
-    # Push
+    # 推送到远程仓库（除非指定了 no_push 或处于试运行模式）
     if not dry_run and not no_push:
-        # Get current branch
+        # 获取当前分支名，以便推送到对应的远程分支
         result = subprocess.run(
             ["git", "branch", "--show-current"],
             capture_output=True,
@@ -198,62 +204,30 @@ def git_add_commit_push(message, dry_run=False, no_push=False):
 
 
 def main():
-    # Load .env file if exists
+    # 主函数，程序入口
+    # 加载 .env 文件中的环境变量
     load_env_file()
 
+    # 设置命令行参数解析器
     parser = argparse.ArgumentParser(description="AI-powered git commit tool")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without executing")
-    parser.add_argument("--no-push", action="store_true", help="Commit only, don't push")
-    parser.add_argument("-m", "--message", type=str, help="Use provided message instead of AI generation")
+    parser.add_argument("--dry-run", action="store_true", help="试运行模式，仅显示操作但不执行")
+    parser.add_argument("--no-push", action="store_true", help="提交后不自动推送到远程仓库")
     args = parser.parse_args()
 
-    # Check if in git repo
-    result = subprocess.run(
-        ["git", "rev-parse", "--git-dir"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        cwd=os.getcwd()
+    # 获取当前工作目录的 git 差异
+    diff_result = get_git_diff()
+
+    # 使用 AI 根据差异生成提交消息
+    commit_message = generate_commit_message(
+        diff_result.stat_output,
+        diff_result.detail_output,
+        diff_result.untracked_files
     )
-    if result.returncode != 0:
-        print("Error: Not a git repository")
-        sys.exit(1)
 
-    print("Analyzing changes...")
-    diff = get_git_diff()
+    print(f"Generated commit message:\n{commit_message}\n")
 
-    if not diff.stat_output and not diff.untracked_files:
-        print("No changes to commit")
-        sys.exit(0)
-
-    # Generate or use provided message
-    if args.message:
-        commit_message = args.message
-    else:
-        print("Generating commit message with AI...")
-        commit_message = generate_commit_message(
-            diff.stat_output,
-            diff.detail_output,
-            diff.untracked_files
-        )
-
-    print(f"\nCommit message: {commit_message}")
-
-    if args.dry_run:
-        print("\n[DRY RUN] Would execute:")
-        print("  git add .")
-        print(f"  git commit -m \"{commit_message}\"")
-        print("  git push")
-        return
-
-    # Confirm
-    confirm = input("\nProceed? (Y/n): ").strip().lower()
-    if confirm and confirm != 'y':
-        print("Cancelled")
-        sys.exit(0)
-
-    git_add_commit_push(commit_message, args.dry_run, args.no_push)
+    # 执行实际的 git 操作（除非是试运行模式）
+    git_add_commit_push(commit_message, dry_run=args.dry_run, no_push=args.no_push)
 
 
 if __name__ == "__main__":
