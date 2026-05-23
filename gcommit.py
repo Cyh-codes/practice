@@ -40,6 +40,8 @@ def get_git_diff():
         ["git", "diff", "--stat"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         cwd=os.getcwd()
     )
     if result.returncode != 0:
@@ -51,6 +53,8 @@ def get_git_diff():
         ["git", "diff"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         cwd=os.getcwd()
     )
 
@@ -59,6 +63,8 @@ def get_git_diff():
         ["git", "ls-files", "--others", "--exclude-standard"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         cwd=os.getcwd()
     )
 
@@ -154,6 +160,8 @@ def git_add_commit_push(message, dry_run=False, no_push=False):
             ["git", "commit", "-m", message],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=os.getcwd()
         )
         if result.returncode != 0:
@@ -168,6 +176,8 @@ def git_add_commit_push(message, dry_run=False, no_push=False):
             ["git", "branch", "--show-current"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=os.getcwd()
         )
         branch = result.stdout.strip()
@@ -177,6 +187,8 @@ def git_add_commit_push(message, dry_run=False, no_push=False):
             ["git", "push", "origin", branch],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=os.getcwd()
         )
         if result.returncode != 0:
@@ -200,6 +212,8 @@ def main():
         ["git", "rev-parse", "--git-dir"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         cwd=os.getcwd()
     )
     if result.returncode != 0:
