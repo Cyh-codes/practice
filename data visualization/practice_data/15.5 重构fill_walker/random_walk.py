@@ -11,16 +11,19 @@ class RandomWalk:
         self.x_values = [0]
         self.y_values = [0]
 
-    def get_step(self):
+    def get_step(self,distance):
         # 重构fill_walk 缩小规模
         n_direction = choice([-1, 1])
-        n_distance = choice([0, 1, 4, 9])
+        n_distance = choice(distance)
         return n_direction * n_distance
     
     def fill_walk(self):
+        # distance 对x, y不同
+        x_distance_pool = [0,1,4,9]
+        y_distance_pool = [0,1,10,15]
         while len(self.x_values) < self.num_points:
-            x_step = self.get_step()
-            y_step =self.get_step()
+            x_step = self.get_step(x_distance_pool)
+            y_step =self.get_step(y_distance_pool)
             if x_step == 0 and y_step == 0:
                 continue
             x = self.x_values[-1] + x_step
